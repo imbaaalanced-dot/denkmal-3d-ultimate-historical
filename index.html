@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#080b0c" />
+  <title>Denkmal 3D — Ultimate Historical Edition</title>
+  <meta name="description" content="Spiele Kael, den letzten Namensträger. Sieben Turmklassen, Ausrüstung, Seelenmagie und eine vertonte Geschichte in einer infernalischen Welt." />
+  <link rel="stylesheet" href="styles.css?v=2.5.0" />
+  <link rel="stylesheet" href="hero.css?v=2.5.0" />
+</head>
+<body>
+  <main id="app">
+    <canvas id="game" tabindex="0" aria-label="Spielbereich Denkmal 3D. WASD oder Pfeiltasten bewegen, Leertaste ausweichen, E Turm bauen, Escape pausieren."></canvas>
+
+    <header class="topbar">
+      <div class="brand">
+        <span class="crest">D</span>
+        <div><strong>DENKMAL 3D</strong><small>KAEL · DER LETZTE NAMENSTRÄGER</small></div>
+      </div>
+      <div class="wave-seal"><small id="levelLabel">LEVEL 1</small><strong id="wave">1</strong></div>
+      <div class="header-actions"><button id="heroBtn" class="icon-btn" disabled aria-label="Kaels Ausrüstung und Chronik öffnen (H)">HELD <kbd>H</kbd></button><button id="pauseBtn" class="icon-btn" disabled aria-label="Spiel pausieren">PAUSE</button><button id="soundBtn" class="icon-btn" aria-label="Ton umschalten">TON: AN</button></div>
+    </header>
+
+    <section class="left-hud">
+      <div class="hero-hud-name"><img src="assets/hero/kael-portrait-v1.png" alt=""/><div><strong>KAEL</strong><small id="heroGearLabel">Abendrot · Maras Laterne</small></div></div>
+      <div class="hud-label"><span>LEBEN</span><b id="playerHpText">100 / 100</b></div>
+      <div class="meter"><i id="playerHp"></i></div>
+      <div class="hud-label soul-label"><span>SEELENRUF</span><b id="soulValue">100 / 100</b></div>
+      <div class="meter soul-meter"><i id="soulFill"></i></div>
+      <div class="hud-label monument-label"><span>MONUMENT</span><b id="monumentHpText">500 / 500</b></div>
+      <div class="meter monument"><i id="monumentHp"></i></div>
+    </section>
+
+    <section class="right-hud">
+      <div class="resource"><span class="shard"></span><div><small>ESSENZ</small><b id="essence">0</b></div></div>
+      <div class="resource"><span class="tower-icon">▲</span><div><small>TÜRME</small><b><span id="towerCount">0</span> / <span id="towerMax">4</span></b></div></div>
+    </section>
+
+    <section class="objective" id="objective">
+      <span id="objectiveText">WELLE 1</span>
+      <div class="wave-meter"><i id="waveProgress"></i></div>
+      <small id="enemyCount">0 FEINDE VERBLEIBEN</small>
+      <small id="storyText" class="story-text">DAS TOR ZUR ASCHE ÖFFNET SICH</small>
+    </section>
+
+    <section class="boss-hud hidden" id="bossHud">
+      <div><span>⚔</span><b id="bossName">DER BELAGERER</b><span>⚔</span></div>
+      <div class="boss-meter"><i id="bossHp"></i></div>
+    </section>
+
+    <section class="arsenal" id="arsenal">
+      <button data-tower="bow" class="selected"><kbd>1</kbd><span>BOGEN</span><b>25</b></button>
+      <button data-tower="cannon"><kbd>2</kbd><span>KANONE</span><b>35</b></button>
+      <button data-tower="ballista"><kbd>3</kbd><span>BALLISTA</span><b>45</b></button>
+      <button data-tower="mage"><kbd>4</kbd><span>MAGIE</span><b>50</b></button>
+      <button data-tower="mortar"><kbd>5</kbd><span>MÖRSER</span><b>62</b></button>
+      <button data-tower="rift"><kbd>6</kbd><span>RIFTLANZE</span><b>68</b></button>
+      <button data-tower="shrine"><kbd>7</kbd><span>SCHREIN</span><b>58</b></button>
+    </section>
+
+    <section class="controls" id="controls" aria-label="Spielaktionen">
+      <div class="move-hint"><kbd>WASD / ↑↓←→</kbd><span>BEWEGEN</span></div>
+      <button id="soulBtn" class="action-btn soul-action"><kbd>F</kbd><span id="soulText">SEELENRUF</span></button>
+      <button id="dodgeBtn" class="action-btn"><kbd>LEER</kbd><span id="dodgeText">AUSWEICHEN</span></button>
+      <button id="buildBtn" class="action-btn"><kbd>E</kbd><span id="buildText">BOGENTURM · 25</span></button>
+      <button id="upgradeBtn" class="action-btn"><kbd>Q</kbd><span id="upgradeText">AUFWERTEN</span></button>
+      <button id="sellBtn" class="action-btn"><kbd>X</kbd><span id="sellText">VERKAUFEN</span></button>
+    </section>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <audio id="heroVoice" preload="none"></audio>
+    <div id="subtitle" class="hero-subtitle hidden" role="status" aria-live="polite"><b>KAEL</b><span id="subtitleText"></span></div>
+    <span id="sagaComplete" class="saga-complete hidden">DIE NAMEN SIND FREI · ENDLOSE WACHT</span>
+    <div id="joystick" class="joystick" aria-label="Touch-Steuerung: zum Bewegen ziehen"><span></span></div>
+
+    <section class="start-screen modal" id="startScreen" role="dialog" aria-modal="true" aria-labelledby="startTitle">
+      <div class="kael-intro">
+        <div class="kael-intro-copy">
+          <span class="release-badge">DENKMAL 3D · DIE CHRONIK DES HÜTERS</span>
+          <p class="eyebrow">EIN GEBROCHENER EID. EINE LETZTE FLAMME.</p>
+          <h1 id="startTitle">KAEL<span>DER LETZTE NAMENSTRÄGER</span></h1>
+          <p>Du hast das Tor zur Hölle geöffnet.<br>Jetzt führt dein Weg zurück durch die Asche.</p>
+          <blockquote>„Solange jemand sich erinnert,<br>ist niemand ganz verloren.“</blockquote>
+          <button id="startBtn" class="primary">LEVEL 1 · VIER TORE <span aria-hidden="true">↗</span></button>
+          <button id="level2Btn" class="primary secondary-level" disabled>LEVEL 2 · DAS LABYRINTH</button><p id="levelProgress" class="level-progress"></p><div class="hero-start-hints"><span><kbd>WASD</kbd> Bewegen</span><span><kbd>F</kbd> Seelenruf</span><span><kbd>H</kbd> Ausrüstung</span><span><kbd>E</kbd> Turm bauen</span></div>
+          <small>Level 1: Wellen 1–5 · Level 2: ab Welle 6 · Ausrüstung mit H</small>
+        </div>
+        <div class="kael-intro-art"><img src="assets/hero/kael-portrait-v1.png" alt="Kael mit silbernem Haar, gravierter Rüstung und dem Licht seiner Seelenlaterne"/><div class="intro-art-caption"><span>01 / DER HÜTER</span><b>Er trägt die Namen.<br>Und die Schuld.</b></div></div>
+      </div>
+    </section>
+
+    <section id="storyScreen" class="modal story-screen hidden" role="dialog" aria-modal="true" aria-labelledby="storyTitle">
+      <div class="story-card"><div class="story-portrait"><img src="assets/hero/kael-portrait-v1.png" alt="Kael"/></div><div class="story-copy">
+        <p class="eyebrow" id="storyKicker"></p><h2 id="storyTitle"></h2><p id="storyBody"></p><blockquote id="storyQuote"></blockquote>
+        <p id="storyReward" class="story-reward"></p><p id="storyObjective" class="story-objective"></p>
+        <div class="story-actions"><button id="storyContinue" class="primary">WEITER ZUR WACHT</button><button id="storyReplay" class="icon-btn">ANHÖREN</button><button id="voiceBtn" class="icon-btn" aria-pressed="true">STIMME: AN</button></div>
+        <small class="voice-credit">KI-Stimme · Deutsch · Untertitel bleiben immer sichtbar.</small>
+      </div></div>
+    </section>
+
+    <section id="characterScreen" class="modal character-screen hidden" role="dialog" aria-modal="true" aria-labelledby="characterTitle">
+      <div class="character-shell"><header class="character-header"><div><p class="eyebrow" id="characterLevel"></p><h2 id="characterTitle">KAEL</h2></div><button id="characterClose" class="icon-btn">ZURÜCK <kbd>H / ESC</kbd></button></header>
+        <div class="character-layout"><aside class="character-showcase"><div id="characterPreview" class="character-preview"><img src="assets/hero/kael-idle-v1.png" alt="Kael mit Glutklinge, Wächterrüstung und Seelenlaterne"/><i class="equipment-glow" aria-hidden="true"></i></div><p id="equippedNames"></p><p id="characterStats"></p></aside>
+          <div class="character-detail"><div class="character-tabs" role="tablist" aria-label="Heldendetails"><button id="equipmentTab" role="tab" aria-controls="equipmentPanel" aria-selected="true">AUSRÜSTUNG</button><button id="journalTab" role="tab" aria-controls="journalPanel" aria-selected="false">CHRONIK</button></div>
+            <div id="equipmentPanel" role="tabpanel" aria-labelledby="equipmentTab"><p class="gear-hint">Wähle deinen Eid. Neue Relikte erwachen mit deinem Fortschritt. Während du hier bist, ruht die Schlacht.</p><div id="gearGrid"></div></div>
+            <div id="journalPanel" class="hidden" role="tabpanel" aria-labelledby="journalTab"><div id="journalEntries"></div></div>
+          </div></div>
+      </div>
+    </section>
+
+    <section class="perk-screen modal hidden" id="perkScreen" role="dialog" aria-modal="true" aria-labelledby="perkTitle">
+      <p class="eyebrow">DIE WELLE IST GEBROCHEN</p>
+      <h2 id="perkTitle">WÄHLE EIN VERMÄCHTNIS</h2>
+      <div class="perk-grid" id="perkGrid"></div>
+      <small>Drücke 1, 2 oder 3</small>
+    </section>
+
+    <section class="gameover modal hidden" id="gameover" role="dialog" aria-modal="true" aria-labelledby="gameoverTitle">
+      <p class="eyebrow">DIE WACHT ENDET</p>
+      <h2 id="gameoverTitle">DAS MONUMENT IST GEFALLEN</h2>
+      <p id="gameoverStats"></p>
+      <button id="restartBtn" class="primary">ERNEUT VERTEIDIGEN</button>
+      <button id="gameoverMenuBtn" class="icon-btn">HAUPTMENÜ</button><small>oder R drücken</small>
+    </section>
+    <section class="modal hidden pause-screen" id="pauseScreen" role="dialog" aria-modal="true" aria-labelledby="pauseTitle"><p class="eyebrow">EIN MOMENT DER RUHE</p><h2 id="pauseTitle">DIE WACHT RUHT</h2><p>Dein Fortschritt bleibt erhalten, solange diese Seite geöffnet ist.</p><button id="resumeBtn" class="primary">WEITER VERTEIDIGEN</button><button id="pauseMenuBtn" class="icon-btn">HAUPTMENÜ · LAUF BEENDEN</button><small>Esc oder P zum Fortsetzen</small></section>
+    <section id="levelComplete" class="modal hidden perk-screen" role="dialog" aria-modal="true" aria-labelledby="levelCompleteTitle">
+      <p class="eyebrow">FÜNF WELLEN ÜBERSTANDEN</p><h2 id="levelCompleteTitle">DAS LABYRINTH IST OFFEN</h2>
+      <p id="levelSaveNote"></p><p>Level 2 beginnt bei Welle 6 mit 120 Essenz und sechs Turmplätzen.<br>Baue auf den markierten Plätzen am Weg. Die Gegner folgen dem Labyrinth.</p>
+      <button id="nextLevelBtn" class="primary">LEVEL 2 STARTEN</button><button id="completeMenuBtn" class="icon-btn">HAUPTMENÜ</button>
+    </section>
+  </main>
+  <script src="levels.js?v=2.5.0"></script>
+  <script src="hero-saga.js?v=2.5.0"></script>
+  <script src="game.js?v=2.5.0"></script>
+</body>
+</html>
